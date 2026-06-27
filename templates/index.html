@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>ScienX AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+<div id="bootScreen">
+    <h1>SCIENX AI</h1>
+    <p id="bootText">INITIALIZING SYSTEM...</p>
+</div>
+
+<div class="app">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+
+        <div class="logo">SCIENX AI</div>
+
+        <button onclick="newChat()">+ New Chat</button>
+
+        <!-- CHATS -->
+        <div class="section" id="chatSection">
+            <h3>Chats</h3>
+            <ul id="chatList"></ul>
+			
+        </div>
+
+        <!-- TOOLS -->
+        <div class="section" id="toolsSection">
+            <h3>Tools</h3>
+
+            <button onclick="toggleMathMode()">
+    🧮 Math Engine
+</button>
+            <button onclick="toggleScienceMode()">
+    🔬 Science Mode
+</button>
+            <button>📚 Advanced Research</button>
+            <button>🌐 Web Search</button>
+            <button>🌍 Translate</button>
+
+        </div>
+
+        <!-- SYSTEM -->
+        <div class="section" id="systemSection">
+            <h3>System</h3>
+
+            <button>⚡ <b>SCIENX</b> </button>
+            
+
+        </div>
+
+    </div>
+
+    <!-- MAIN -->
+    <div class="main">
+
+        <!-- ORB -->
+        <div class="orb-wrapper">
+
+            <div id="orb" class="orb"></div>
+
+            <div id="orbStatus" class="orb-text">
+                CLICK ORB TO ACTIVATE VOICE MODE
+            </div>
+
+        </div>
+
+        <!-- CHAT -->
+        <div class="chat">
+
+            <div id="messages" class="messages"></div>
+
+            <div class="input-box">
+
+                <input id="userInput" type="text" placeholder="Ask ScienX...">
+
+                <button onclick="sendMessage()">Send</button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+
+</body>
+</html>
