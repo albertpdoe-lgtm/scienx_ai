@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 import json
 import os
-import subprocess
 
 app = Flask(__name__)
 
@@ -18,9 +17,9 @@ def load_memory():
             return json.load(file)
 
     return {
-        "name": None,
-        "subject": None,
-        "facts": []
+        "knowledge": {},
+        "unknown_questions": [],
+        "chat_history": []
     }
 
 
@@ -32,27 +31,53 @@ def save_memory(data):
 memory = load_memory()
 
 # =========================
-# 🧠 INVESTOR / BRAIN MODE
+# 🧠 SELF LEARNING ENGINE
+# =========================
+
+def learn_system(user_message, memory):
+    text = user_message.lower().strip()
+
+    # 1. recall learned knowledge
+    if text in memory["knowledge"]:
+        return memory["knowledge"][text]
+
+    # 2. teaching mode
+    if " is " in user_message:
+        parts = user_message.split(" is ", 1)
+        if len(parts) == 2:
+            question = parts[0].strip().lower()
+            answer = parts[1].strip()
+
+            memory["knowledge"][question] = answer
+            save_memory(memory)
+
+            return "Okay 👍 I will remember that."
+
+    # 3. unknown question detection
+    if any(x in text for x in ["what is", "who is", "define", "explain"]):
+        memory["unknown_questions"].append(text)
+        save_memory(memory)
+
+        return "I don't know that yet. You didn't teach me that."
+
+    return None
+
+
+# =========================
+# 🧠 BRAIN SYSTEM
 # =========================
 
 def brain(msg, memory):
     text = msg.lower().strip()
 
     if any(x in text for x in ["hello", "hi", "hey"]):
-        return "Hello 👋 I am ScienX AI, your intelligent assistant."
+        return "Hello 👋 I am ScienX AI."
 
     if "how are you" in text:
-        return "I am fully operational and ready to assist you."
+        return "I am fully operational."
 
     if "who are you" in text:
-        return "I am ScienX AI — an advanced educational and automation system."
-
-    # Investor mode upgrade
-    if any(x in text for x in ["investor", "minister", "governor", "hon.", "robert teah"]):
-        return (
-            "Good day and welcome. ScienX AI is an advanced educational intelligence system "
-            "built to transform learning, science, and automation across Liberia and West Africa."
-        )
+        return "I am ScienX AI — a learning assistant system."
 
     if memory.get("name") and "my name" in text:
         return f"You told me your name is {memory['name']}."
@@ -78,59 +103,45 @@ def knowledge(msg):
         return "Venus is the hottest planet in the solar system."
 
     if "earth" in text:
-        return "Earth is our home planet with life."
+        return "Earth is our home planet."
 
     if "mars" in text:
-        return "Mars is known as the Red Planet."
+        return "Mars is the Red Planet."
 
     if "jupiter" in text:
-        return "Jupiter is the largest planet in the solar system."
+        return "Jupiter is the largest planet."
 
     if "saturn" in text:
-        return "Saturn has beautiful rings."
+        return "Saturn has rings."
 
     # COUNTRIES
     if "capital of liberia" in text:
-        return "The capital of Liberia is Monrovia."
+        return "Monrovia"
 
     if "capital of nigeria" in text:
-        return "The capital of Nigeria is Abuja."
+        return "Abuja"
 
     if "capital of ghana" in text:
-        return "The capital of Ghana is Accra."
+        return "Accra"
 
     # GRAMMAR
     if "noun" in text:
-        return "A noun is a naming word (person, place, thing, idea)."
+        return "A noun is a naming word."
 
     if "verb" in text:
         return "A verb is an action word."
-
-    if "parts of speech" in text:
-        return "8 Parts of Speech: Noun, Pronoun, Verb, Adjective, Adverb, Preposition, Conjunction, Interjection."
-
-    # SCIENCE
-    if "gravity" in text:
-        return "Gravity is the force that pulls objects toward Earth."
-
-    if "atom" in text:
-        return "An atom is the smallest unit of matter."
 
     return None
 
 
 # =========================
-# HOME
+# ROUTES
 # =========================
 
 @app.route("/")
 def home():
     return render_template("index.html")
 
-
-# =========================
-# CHAT ROUTE
-# =========================
 
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -140,52 +151,54 @@ def chat():
     user_message = request.json.get("message", "")
     text = user_message.lower().strip()
 
-    # 🧠 Brain first
+    # =========================
+    # CHAT LOG
+    # =========================
+    memory["chat_history"].append(user_message)
+    memory["chat_history"] = memory["chat_history"][-20:]
+    save_memory(memory)
+
+    # =========================
+    # 1. SELF LEARNING FIRST
+    # =========================
+    learned = learn_system(user_message, memory)
+    if learned:
+        return jsonify({"response": learned})
+
+    # =========================
+    # 2. BRAIN
+    # =========================
     smart = brain(user_message, memory)
     if smart:
         return jsonify({"response": smart})
 
-    # 🌍 Knowledge second
+    # =========================
+    # 3. KNOWLEDGE ENGINE
+    # =========================
     knowledge_response = knowledge(user_message)
     if knowledge_response:
         return jsonify({"response": knowledge_response})
 
     # =========================
-    # MEMORY SYSTEM
+    # 4. MEMORY ACTIONS
     # =========================
-
-    if "remember that" in text:
-        fact = user_message.replace("remember that", "").strip()
-        memory["facts"].append(fact)
-        save_memory(memory)
-        return jsonify({"response": f"I will remember: {fact}"})
-
-
     if "my name is" in text:
         name = user_message.replace("my name is", "").strip()
         memory["name"] = name
         save_memory(memory)
         return jsonify({"response": f"Nice to meet you {name}."})
 
-    # =========================
-    # SYSTEM COMMANDS (SAFE VERSION)
-    # =========================
-
-    if "open notepad" in text:
-        return jsonify({"response": "Notepad is only available on your local PC version of ScienX."})
-
-    if "open calculator" in text:
-        return jsonify({"response": "Calculator is only available on your local PC version of ScienX."})
-
-    if "volume" in text:
-        return jsonify({"response": "System control is disabled in cloud mode. Use local version."})
+    if "remember that" in text:
+        fact = user_message.replace("remember that", "").strip()
+        memory.setdefault("facts", []).append(fact)
+        save_memory(memory)
+        return jsonify({"response": f"I will remember: {fact}"})
 
     # =========================
-    # DEFAULT RESPONSE
+    # DEFAULT
     # =========================
-
     return jsonify({
-        "response": "ScienX AI received your request. Try science, geography, math, or investor mode."
+        "response": "ScienX AI received your message. Try asking science, geography, or teach me something."
     })
 
 
