@@ -1,12 +1,13 @@
 from flask import Flask, render_template, request, jsonify
 import json
 import os
+import re
 
 app = Flask(__name__)
 
-# =========================
-# MEMORY SYSTEM
-# =========================
+# =========================================================
+# 🧠 MEMORY SYSTEM
+# =========================================================
 
 MEMORY_FILE = "memory.json"
 
@@ -19,7 +20,8 @@ def load_memory():
     return {
         "knowledge": {},
         "unknown_questions": [],
-        "chat_history": []
+        "chat_history": [],
+        "name": None
     }
 
 
@@ -30,31 +32,117 @@ def save_memory(data):
 
 memory = load_memory()
 
-# =========================
+# =========================================================
+# 🧹 CLEAN TEXT
+# =========================================================
+
+def clean(text):
+    return re.sub(r"[^\w\s]", "", text.lower().strip())
+
+
+# =========================================================
+# 🧠 KNOWLEDGE ENGINE (STATIC BRAIN)
+# =========================================================
+
+def knowledge(msg):
+    text = clean(msg)
+
+    data = {
+        # SPACE
+        "sun": "The Sun is a star at the center of our solar system.",
+        "moon": "The Moon is Earth's natural satellite.",
+        "earth": "Earth is the third planet from the Sun.",
+        "mars": "Mars is the Red Planet.",
+        "jupiter": "Jupiter is the largest planet.",
+        "saturn": "Saturn has rings.",
+        "planets": "Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune",
+
+        # PHYSICS
+        "gravity": "Gravity is the force that pulls objects toward Earth.",
+        "light": "Light is a form of energy that enables vision.",
+        "sound": "Sound is vibration that travels through air.",
+        "energy": "Energy is the ability to do work.",
+
+        # CHEMISTRY
+        "atom": "An atom is the smallest unit of matter.",
+        "water": "Water is H2O.",
+        "oxygen": "Oxygen is needed for breathing.",
+
+        # GRAMMAR
+        "noun": "A noun is a naming word.",
+        "verb": "A verb is an action word.",
+
+        # COUNTRIES
+        "capital of ghana": "Accra",
+        "capital of nigeria": "Abuja",
+        "capital of liberia": "Monrovia"
+    }
+
+    for key in data:
+        if key in text:
+            return data[key]
+
+    return None
+
+
+# =========================================================
+# 🧠 REASONING ENGINE
+# =========================================================
+
+def reasoning_fix(msg):
+    text = clean(msg)
+
+    if text.startswith("who is"):
+        entity = text.replace("who is", "").strip()
+
+        if entity == "newton":
+            return "Isaac Newton discovered gravity and laws of motion."
+
+        if entity == "einstein":
+            return "Albert Einstein developed the theory of relativity."
+
+        return f"I don't know who {entity} is yet. Teach me: {entity} is ..."
+
+    if text.startswith("what is"):
+        entity = text.replace("what is", "").strip()
+
+        if entity == "light":
+            return "Light is energy that allows vision."
+
+        if entity == "sound":
+            return "Sound is vibration traveling through air."
+
+        return f"I don't know what {entity} is yet. Teach me: {entity} is ..."
+
+    return None
+
+
+# =========================================================
 # 🧠 SELF LEARNING ENGINE
-# =========================
+# =========================================================
 
 def learn_system(user_message, memory):
-    text = user_message.lower().strip()
+    text = clean(user_message)
 
-    # 1. recall learned knowledge
-    if text in memory["knowledge"]:
-        return memory["knowledge"][text]
+    # recall learned knowledge
+    for key in memory["knowledge"]:
+        if key in text:
+            return memory["knowledge"][key]
 
-    # 2. teaching mode
-    if " is " in user_message:
-        parts = user_message.split(" is ", 1)
-        if len(parts) == 2:
-            question = parts[0].strip().lower()
-            answer = parts[1].strip()
+    # teach mode
+    if " is " in text:
+        parts = text.split(" is ", 1)
 
-            memory["knowledge"][question] = answer
-            save_memory(memory)
+        question = parts[0].strip()
+        answer = parts[1].strip()
 
-            return "Okay 👍 I will remember that."
+        memory["knowledge"][question] = answer
+        save_memory(memory)
 
-    # 3. unknown question detection
-    if any(x in text for x in ["what is", "who is", "define", "explain"]):
+        return "Okay 👍 I will remember that."
+
+    # unknown tracking
+    if any(x in text for x in ["what", "who", "define", "explain"]):
         memory["unknown_questions"].append(text)
         save_memory(memory)
 
@@ -63,18 +151,18 @@ def learn_system(user_message, memory):
     return None
 
 
-# =========================
+# =========================================================
 # 🧠 BRAIN SYSTEM
-# =========================
+# =========================================================
 
 def brain(msg, memory):
-    text = msg.lower().strip()
+    text = clean(msg)
 
     if any(x in text for x in ["hello", "hi", "hey"]):
         return "Hello 👋 I am ScienX AI."
 
     if "how are you" in text:
-        return "I am fully operational."
+        return "I am fully operational and learning."
 
     if "who are you" in text:
         return "I am ScienX AI — a learning assistant system."
@@ -85,58 +173,9 @@ def brain(msg, memory):
     return None
 
 
-# =========================
-# 🌍 KNOWLEDGE ENGINE
-# =========================
-
-def knowledge(msg):
-    text = msg.lower()
-
-    # PLANETS
-    if "planets" in text:
-        return "Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto"
-
-    if "mercury" in text:
-        return "Mercury is the closest planet to the Sun."
-
-    if "venus" in text:
-        return "Venus is the hottest planet in the solar system."
-
-    if "earth" in text:
-        return "Earth is our home planet."
-
-    if "mars" in text:
-        return "Mars is the Red Planet."
-
-    if "jupiter" in text:
-        return "Jupiter is the largest planet."
-
-    if "saturn" in text:
-        return "Saturn has rings."
-
-    # COUNTRIES
-    if "capital of liberia" in text:
-        return "Monrovia"
-
-    if "capital of nigeria" in text:
-        return "Abuja"
-
-    if "capital of ghana" in text:
-        return "Accra"
-
-    # GRAMMAR
-    if "noun" in text:
-        return "A noun is a naming word."
-
-    if "verb" in text:
-        return "A verb is an action word."
-
-    return None
-
-
-# =========================
-# ROUTES
-# =========================
+# =========================================================
+# 🌐 ROUTES
+# =========================================================
 
 @app.route("/")
 def home():
@@ -149,38 +188,17 @@ def chat():
     global memory
 
     user_message = request.json.get("message", "")
-    text = user_message.lower().strip()
+    text = clean(user_message)
 
     # =========================
-    # CHAT LOG
+    # CHAT HISTORY
     # =========================
     memory["chat_history"].append(user_message)
     memory["chat_history"] = memory["chat_history"][-20:]
     save_memory(memory)
 
     # =========================
-    # 1. SELF LEARNING FIRST
-    # =========================
-    learned = learn_system(user_message, memory)
-    if learned:
-        return jsonify({"response": learned})
-
-    # =========================
-    # 2. BRAIN
-    # =========================
-    smart = brain(user_message, memory)
-    if smart:
-        return jsonify({"response": smart})
-
-    # =========================
-    # 3. KNOWLEDGE ENGINE
-    # =========================
-    knowledge_response = knowledge(user_message)
-    if knowledge_response:
-        return jsonify({"response": knowledge_response})
-
-    # =========================
-    # 4. MEMORY ACTIONS
+    # 1. MEMORY ACTIONS FIRST
     # =========================
     if "my name is" in text:
         name = user_message.replace("my name is", "").strip()
@@ -195,16 +213,44 @@ def chat():
         return jsonify({"response": f"I will remember: {fact}"})
 
     # =========================
-    # DEFAULT
+    # 2. KNOWLEDGE ENGINE (FIXED PRIORITY)
+    # =========================
+    kb = knowledge(user_message)
+    if kb:
+        return jsonify({"response": kb})
+
+    # =========================
+    # 3. REASONING ENGINE
+    # =========================
+    reason = reasoning_fix(user_message)
+    if reason:
+        return jsonify({"response": reason})
+
+    # =========================
+    # 4. SELF LEARNING
+    # =========================
+    learned = learn_system(user_message, memory)
+    if learned:
+        return jsonify({"response": learned})
+
+    # =========================
+    # 5. BRAIN
+    # =========================
+    smart = brain(user_message, memory)
+    if smart:
+        return jsonify({"response": smart})
+
+    # =========================
+    # 6. DEFAULT
     # =========================
     return jsonify({
-        "response": "ScienX AI received your message. Try asking science, geography, or teach me something."
+        "response": "ScienX AI did not understand. You can teach me: X is Y"
     })
 
 
-# =========================
-# RUN (RENDER SAFE)
-# =========================
+# =========================================================
+# 🚀 RUN (RENDER SAFE)
+# =========================================================
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
